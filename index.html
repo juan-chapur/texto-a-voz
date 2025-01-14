@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lector de Texto</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+      text-align: center;
+      background-color: #121212;
+      color: #ffffff;
+    }
+    textarea {
+      width: 90%;
+      height: 150px;
+      margin: 10px 0;
+      font-size: 16px;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 5px;
+      resize: none;
+      background-color: #1e1e1e;
+      color: #ffffff;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lector de Texto en Voz Alta</h1>
+
+  <textarea id="text-input" placeholder="Pega aquí el texto que quieres escuchar..."></textarea>
+  <br>
+  <button onclick="leerTexto()">Leer Texto</button>
+
+  <script>
+    const textarea = document.getElementById('text-input');
+    let voices = [];
+
+    // Función para leer el texto con velocidad rápida y voz masculina
+    function leerTexto() {
+      const texto = textarea.value.trim();
+      if (texto === '') {
+        alert('Por favor, pega o escribe algún texto para leer.');
+        return;
+      }
+
+      const speech = new SpeechSynthesisUtterance(texto);
+      speech.lang = 'es-ES'; // Idioma español
+      speech.rate = 1.9; // Velocidad rápida por defecto
+      speech.pitch = 0; // Tono normal
+
+      // Buscar una voz masculina en español
+      let vozMasculina = voices.find(voz => 
+        voz.lang === 'es-ES' && 
+        (voz.name.toLowerCase().includes('male') || voz.name.toLowerCase().includes('pablo'))
+      );
+
+      // Si no se encuentra voz masculina, usar cualquier voz en español
+      if (!vozMasculina) {
+        vozMasculina = voices.find(voz => voz.lang === 'es-ES');
+      }
+
+      if (vozMasculina) {
+        speech.voice = vozMasculina;
+      } else {
+        alert('No se encontró una voz masculina en español. Se usará una voz predeterminada.');
+      }
+
+      window.speechSynthesis.speak(speech);
+    }
+
+    // Leer automáticamente cuando se pega texto
+    textarea.addEventListener('paste', () => {
+      setTimeout(leerTexto, 100);
+    });
+
+    // Cargar las voces disponibles
+    function cargarVoces() {
+      voices = window.speechSynthesis.getVoices();
+    }
+
+    // Esperar a que las voces estén cargadas
+    window.speechSynthesis.onvoiceschanged = cargarVoces;
+    
+    // Cargar las voces inmediatamente si ya están disponibles
+    if (window.speechSynthesis.getVoices().length) {
+      cargarVoces();
+    }
+  </script>
+</body>
+</html>
