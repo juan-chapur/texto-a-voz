@@ -33,9 +33,26 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 16px;
+      margin: 5px;
     }
     button:hover {
       background-color: #0056b3;
+    }
+    button:disabled {
+      background-color: #666;
+      cursor: not-allowed;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    select {
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #333;
+      border-radius: 5px;
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px;
     }
   </style>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -45,13 +62,35 @@
 
   <textarea id="text-input" placeholder="Pega aquí el texto que quieres escuchar..."></textarea>
   <br>
-  <button onclick="leerTexto()">Leer Texto</button>
+  
+  <div class="controls">
+    <label for="speed-select">Velocidad:</label>
+    <select id="speed-select">
+      <option value="0.5">0.5x (Muy lento)</option>
+      <option value="0.75">0.75x (Lento)</option>
+      <option value="1">1x (Normal)</option>
+      <option value="1.25">1.25x (Rápido)</option>
+      <option value="1.5">1.5x (Más rápido)</option>
+      <option value="1.9" selected>1.9x (Muy rápido)</option>
+      <option value="2">2x (Máximo)</option>
+    </select>
+  </div>
+  
+  <div class="controls">
+    <button onclick="leerTexto()">Leer Texto</button>
+    <button id="pause-btn" onclick="pausarReanudar()" disabled>Pausar</button>
+    <button onclick="detenerTexto()">Detener</button>
+  </div>
 
   <script>
     const textarea = document.getElementById('text-input');
+    const speedSelect = document.getElementById('speed-select');
+    const pauseBtn = document.getElementById('pause-btn');
     let voices = [];
+    let currentSpeech = null;
+    let isPaused = false;
 
-    // Función para leer el texto con velocidad rápida y voz masculina
+    // Función para leer el texto con velocidad seleccionada y voz masculina
     function leerTexto() {
       const texto = textarea.value.trim();
       if (texto === '') {
@@ -59,9 +98,12 @@
         return;
       }
 
+      // Detener cualquier síntesis en curso
+      window.speechSynthesis.cancel();
+
       const speech = new SpeechSynthesisUtterance(texto);
       speech.lang = 'es-ES'; // Idioma español
-      speech.rate = 1.9; // Velocidad rápida por defecto
+      speech.rate = parseFloat(speedSelect.value); // Velocidad seleccionada
       speech.pitch = 0; // Tono normal
 
       // Buscar una voz masculina en español
@@ -77,11 +119,55 @@
 
       if (vozMasculina) {
         speech.voice = vozMasculina;
-      } else {
-        alert('No se encontró una voz masculina en español. Se usará una voz predeterminada.');
       }
 
+      // Configurar eventos de la síntesis
+      speech.onstart = function() {
+        pauseBtn.disabled = false;
+        pauseBtn.textContent = 'Pausar';
+        isPaused = false;
+      };
+
+      speech.onend = function() {
+        pauseBtn.disabled = true;
+        pauseBtn.textContent = 'Pausar';
+        isPaused = false;
+        currentSpeech = null;
+      };
+
+      speech.onerror = function() {
+        pauseBtn.disabled = true;
+        pauseBtn.textContent = 'Pausar';
+        isPaused = false;
+        currentSpeech = null;
+      };
+
+      currentSpeech = speech;
       window.speechSynthesis.speak(speech);
+    }
+
+    // Función para pausar/reanudar la lectura
+    function pausarReanudar() {
+      if (window.speechSynthesis.speaking) {
+        if (isPaused) {
+          window.speechSynthesis.resume();
+          pauseBtn.textContent = 'Pausar';
+          isPaused = false;
+        } else {
+          window.speechSynthesis.pause();
+          pauseBtn.textContent = 'Reanudar';
+          isPaused = true;
+        }
+      }
+    }
+
+    // Función para detener la lectura
+    function detenerTexto() {
+      window.speechSynthesis.cancel();
+      pauseBtn.disabled = true;
+      pauseBtn.textContent = 'Pausar';
+      isPaused = false;
+      currentSpeech = null;
     }
 
     // Leer automáticamente cuando se pega texto
