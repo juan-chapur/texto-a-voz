@@ -7,11 +7,16 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 0;
       padding: 0;
-      text-align: center;
       background-color: #121212;
       color: #ffffff;
+      display: flex;
+    }
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      text-align: center;
     }
     textarea {
       width: 90%;
@@ -54,32 +59,102 @@
       font-size: 16px;
       margin: 5px;
     }
+    .sidebar {
+      width: 300px;
+      background-color: #1e1e1e;
+      border-right: 1px solid #333;
+      padding: 20px;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      color: #ffffff;
+      text-align: center;
+    }
+    .saved-text {
+      background-color: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .saved-text:hover {
+      background-color: #333;
+    }
+    .saved-text-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #007BFF;
+    }
+    .saved-text-preview {
+      font-size: 12px;
+      color: #aaa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .saved-text-actions {
+      margin-top: 5px;
+      text-align: right;
+    }
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 3px 8px;
+      font-size: 12px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+    .save-btn {
+      background-color: #28a745;
+      margin-left: 5px;
+    }
+    .save-btn:hover {
+      background-color: #218838;
+    }
   </style>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
-  <h1>Lector de Texto en Voz Alta</h1>
-
-  <textarea id="text-input" placeholder="Pega aquí el texto que quieres escuchar..."></textarea>
-  <br>
-  
-  <div class="controls">
-    <label for="speed-select">Velocidad:</label>
-    <select id="speed-select">
-      <option value="0.5">0.5x (Muy lento)</option>
-      <option value="0.75">0.75x (Lento)</option>
-      <option value="1">1x (Normal)</option>
-      <option value="1.25">1.25x (Rápido)</option>
-      <option value="1.5">1.5x (Más rápido)</option>
-      <option value="1.9" selected>1.9x (Muy rápido)</option>
-      <option value="2">2x (Máximo)</option>
-    </select>
+  <div class="sidebar">
+    <h3>Textos Guardados</h3>
+    <div id="saved-texts-list">
+      <!-- Los textos guardados aparecerán aquí -->
+    </div>
   </div>
   
-  <div class="controls">
-    <button onclick="leerTexto()">Leer Texto</button>
-    <button id="pause-btn" onclick="pausarReanudar()" disabled>Pausar</button>
-    <button onclick="detenerTexto()">Detener</button>
+  <div class="main-content">
+    <h1>Lector de Texto en Voz Alta</h1>
+
+    <textarea id="text-input" placeholder="Pega aquí el texto que quieres escuchar..."></textarea>
+    <br>
+    
+    <div class="controls">
+      <label for="speed-select">Velocidad:</label>
+      <select id="speed-select">
+        <option value="0.5">0.5x (Muy lento)</option>
+        <option value="0.75">0.75x (Lento)</option>
+        <option value="1">1x (Normal)</option>
+        <option value="1.25">1.25x (Rápido)</option>
+        <option value="1.5">1.5x (Más rápido)</option>
+        <option value="1.9" selected>1.9x (Muy rápido)</option>
+        <option value="2">2x (Máximo)</option>
+      </select>
+    </div>
+    
+    <div class="controls">
+      <button onclick="leerTexto()">Leer Texto</button>
+      <button id="pause-btn" onclick="pausarReanudar()" disabled>Pausar</button>
+      <button onclick="detenerTexto()">Detener</button>
+      <button class="save-btn" onclick="guardarTexto()">Guardar Texto</button>
+    </div>
   </div>
 
   <script>
@@ -187,6 +262,77 @@
     if (window.speechSynthesis.getVoices().length) {
       cargarVoces();
     }
+
+    // Funciones para manejar localStorage
+    function guardarTexto() {
+      const texto = textarea.value.trim();
+      if (texto === '') {
+        alert('Por favor, escribe algún texto para guardar.');
+        return;
+      }
+
+      const titulo = prompt('Ingresa un título para el texto:');
+      if (titulo === null || titulo.trim() === '') {
+        return; // Usuario canceló o no ingresó título
+      }
+
+      const textoGuardado = {
+        id: Date.now(),
+        titulo: titulo.trim(),
+        contenido: texto,
+        fecha: new Date().toLocaleDateString()
+      };
+
+      let textosGuardados = JSON.parse(localStorage.getItem('textosGuardados') || '[]');
+      textosGuardados.push(textoGuardado);
+      localStorage.setItem('textosGuardados', JSON.stringify(textosGuardados));
+
+      mostrarTextosGuardados();
+      alert('Texto guardado exitosamente!');
+    }
+
+    function mostrarTextosGuardados() {
+      const textosGuardados = JSON.parse(localStorage.getItem('textosGuardados') || '[]');
+      const lista = document.getElementById('saved-texts-list');
+      
+      if (textosGuardados.length === 0) {
+        lista.innerHTML = '<p style="color: #666; text-align: center; font-style: italic;">No hay textos guardados</p>';
+        return;
+      }
+
+      lista.innerHTML = textosGuardados.map(texto => `
+        <div class="saved-text" onclick="cargarTexto(${texto.id})">
+          <div class="saved-text-title">${texto.titulo}</div>
+          <div class="saved-text-preview">${texto.contenido.substring(0, 50)}...</div>
+          <div style="font-size: 10px; color: #666; margin-top: 3px;">${texto.fecha}</div>
+          <div class="saved-text-actions">
+            <button class="delete-btn" onclick="event.stopPropagation(); eliminarTexto(${texto.id})">Eliminar</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function cargarTexto(id) {
+      const textosGuardados = JSON.parse(localStorage.getItem('textosGuardados') || '[]');
+      const texto = textosGuardados.find(t => t.id === id);
+      
+      if (texto) {
+        textarea.value = texto.contenido;
+        textarea.focus();
+      }
+    }
+
+    function eliminarTexto(id) {
+      if (confirm('¿Estás seguro de que quieres eliminar este texto?')) {
+        let textosGuardados = JSON.parse(localStorage.getItem('textosGuardados') || '[]');
+        textosGuardados = textosGuardados.filter(t => t.id !== id);
+        localStorage.setItem('textosGuardados', JSON.stringify(textosGuardados));
+        mostrarTextosGuardados();
+      }
+    }
+
+    // Cargar textos guardados al iniciar la aplicación
+    document.addEventListener('DOMContentLoaded', mostrarTextosGuardados);
   </script>
 </body>
 </html>
