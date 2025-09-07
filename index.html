@@ -137,6 +137,13 @@
     <br>
     
     <div class="controls">
+      <label for="voice-select">Voz:</label>
+      <select id="voice-select">
+        <option value="">Cargando voces...</option>
+      </select>
+    </div>
+    
+    <div class="controls">
       <label for="speed-select">Velocidad:</label>
       <select id="speed-select">
         <option value="0.5">0.5x (Muy lento)</option>
@@ -160,12 +167,30 @@
   <script>
     const textarea = document.getElementById('text-input');
     const speedSelect = document.getElementById('speed-select');
+    const voiceSelect = document.getElementById('voice-select');
     const pauseBtn = document.getElementById('pause-btn');
     let voices = [];
     let currentSpeech = null;
     let isPaused = false;
 
-    // Función para leer el texto con velocidad seleccionada y voz masculina
+    // Función para reproducir una frase de ejemplo con la voz seleccionada
+    function reproducirEjemploVoz() {
+      const voiceIndex = parseInt(voiceSelect.value);
+      if (isNaN(voiceIndex) || !voices[voiceIndex]) return;
+      
+      // Detener cualquier síntesis en curso
+      window.speechSynthesis.cancel();
+      
+      const ejemploTexto = "Hola, esta es una muestra de cómo suena mi voz.";
+      const speech = new SpeechSynthesisUtterance(ejemploTexto);
+      speech.voice = voices[voiceIndex];
+      speech.rate = 1; // Velocidad normal para el ejemplo
+      speech.pitch = 1; // Tono normal
+      
+      window.speechSynthesis.speak(speech);
+    }
+
+    // Función para leer el texto con velocidad seleccionada y voz seleccionada
     function leerTexto() {
       const texto = textarea.value.trim();
       if (texto === '') {
@@ -179,21 +204,12 @@
       const speech = new SpeechSynthesisUtterance(texto);
       speech.lang = 'es-ES'; // Idioma español
       speech.rate = parseFloat(speedSelect.value); // Velocidad seleccionada
-      speech.pitch = 0; // Tono normal
+      speech.pitch = 1; // Tono normal
 
-      // Buscar una voz masculina en español
-      let vozMasculina = voices.find(voz => 
-        voz.lang === 'es-ES' && 
-        (voz.name.toLowerCase().includes('male') || voz.name.toLowerCase().includes('pablo'))
-      );
-
-      // Si no se encuentra voz masculina, usar cualquier voz en español
-      if (!vozMasculina) {
-        vozMasculina = voices.find(voz => voz.lang === 'es-ES');
-      }
-
-      if (vozMasculina) {
-        speech.voice = vozMasculina;
+      // Usar la voz seleccionada
+      const voiceIndex = parseInt(voiceSelect.value);
+      if (!isNaN(voiceIndex) && voices[voiceIndex]) {
+        speech.voice = voices[voiceIndex];
       }
 
       // Configurar eventos de la síntesis
@@ -253,6 +269,32 @@
     // Cargar las voces disponibles
     function cargarVoces() {
       voices = window.speechSynthesis.getVoices();
+      
+      // Limpiar el select de voces
+      voiceSelect.innerHTML = '';
+      
+      if (voices.length === 0) {
+        voiceSelect.innerHTML = '<option value="">No hay voces disponibles (requiere navegador compatible)</option>';
+        return;
+      }
+      
+      // Filtrar y agregar voces al select
+      voices.forEach((voice, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+        
+        // Seleccionar una voz en español por defecto
+        if (voice.lang.startsWith('es') && !voiceSelect.value) {
+          option.selected = true;
+        }
+      });
+      
+      // Si no hay voz en español, seleccionar la primera
+      if (!voiceSelect.value && voices.length > 0) {
+        voiceSelect.value = 0;
+      }
     }
 
     // Esperar a que las voces estén cargadas
@@ -262,6 +304,16 @@
     if (window.speechSynthesis.getVoices().length) {
       cargarVoces();
     }
+    
+    // Intentar cargar voces después de un retraso (fallback)
+    setTimeout(() => {
+      if (voices.length === 0) {
+        cargarVoces();
+      }
+    }, 1000);
+
+    // Event listener para cambio de voz - reproducir ejemplo
+    voiceSelect.addEventListener('change', reproducirEjemploVoz);
 
     // Funciones para manejar localStorage
     function guardarTexto() {
