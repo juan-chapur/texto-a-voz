@@ -137,6 +137,15 @@
     <br>
     
     <div class="controls">
+      <label for="gender-select">Tipo de voz:</label>
+      <select id="gender-select">
+        <option value="all">Todas las voces</option>
+        <option value="female">Voz femenina</option>
+        <option value="male">Voz masculina</option>
+      </select>
+    </div>
+    
+    <div class="controls">
       <label for="voice-select">Voz:</label>
       <select id="voice-select">
         <option value="">Cargando voces...</option>
@@ -168,10 +177,94 @@
     const textarea = document.getElementById('text-input');
     const speedSelect = document.getElementById('speed-select');
     const voiceSelect = document.getElementById('voice-select');
+    const genderSelect = document.getElementById('gender-select');
     const pauseBtn = document.getElementById('pause-btn');
     let voices = [];
     let currentSpeech = null;
     let isPaused = false;
+
+    // Función para clasificar el género de la voz basado en el nombre
+    function clasificarGeneroVoz(voiceName) {
+      const nombreLower = voiceName.toLowerCase();
+      
+      // Palabras clave para voces femeninas
+      const indicadoresFemeninos = [
+        'female', 'woman', 'maria', 'ana', 'carmen', 'elena', 'lucia', 'sofia', 'isabela',
+        'clara', 'laura', 'monica', 'paula', 'alejandra', 'fernanda', 'gabriela',
+        'paloma', 'esperanza', 'paulina', 'ximena', 'zoraida', 'zira', 'eva', 'carmela',
+        'femenina', 'mujer', 'chica', 'lady', 'girl', 'she', 'her'
+      ];
+      
+      // Palabras clave para voces masculinas
+      const indicadoresMasculinos = [
+        'male', 'man', 'diego', 'carlos', 'jorge', 'miguel', 'pablo', 'andres', 'felipe',
+        'ricardo', 'antonio', 'francisco', 'raul', 'pedro', 'juan', 'luis', 'mario',
+        'alejandro', 'fernando', 'daniel', 'masculina', 'hombre', 'chico', 'boy',
+        'he', 'his', 'him'
+      ];
+      
+      // Verificar indicadores femeninos
+      if (indicadoresFemeninos.some(indicador => nombreLower.includes(indicador))) {
+        return 'female';
+      }
+      
+      // Verificar indicadores masculinos
+      if (indicadoresMasculinos.some(indicador => nombreLower.includes(indicador))) {
+        return 'male';
+      }
+      
+      // Si no se puede determinar, retornar neutro
+      return 'neutral';
+    }
+
+    // Función para guardar preferencias de voz en localStorage
+    function guardarPreferenciasVoz() {
+      const preferencias = {
+        genero: genderSelect.value,
+        vozIndex: voiceSelect.value,
+        vozNombre: voices[parseInt(voiceSelect.value)]?.name || '',
+        velocidad: speedSelect.value
+      };
+      localStorage.setItem('preferenciasTTS', JSON.stringify(preferencias));
+    }
+
+    // Función para cargar preferencias de voz desde localStorage
+    function cargarPreferenciasVoz() {
+      const preferenciasGuardadas = localStorage.getItem('preferenciasTTS');
+      if (preferenciasGuardadas) {
+        try {
+          const preferencias = JSON.parse(preferenciasGuardadas);
+          
+          // Restaurar velocidad
+          if (preferencias.velocidad) {
+            speedSelect.value = preferencias.velocidad;
+          }
+          
+          // Restaurar género
+          if (preferencias.genero) {
+            genderSelect.value = preferencias.genero;
+          }
+          
+          // Restaurar voz específica (se hará después de cargar las voces)
+          return preferencias;
+        } catch (e) {
+          console.log('Error al cargar preferencias:', e);
+        }
+      }
+      return null;
+    }
+
+    // Función para filtrar voces por género
+    function filtrarVocesPorGenero(generoFiltro) {
+      if (generoFiltro === 'all') {
+        return voices;
+      }
+      
+      return voices.filter(voice => {
+        const genero = clasificarGeneroVoz(voice.name);
+        return genero === generoFiltro || (generoFiltro === 'neutral' && genero === 'neutral');
+      });
+    }
 
     // Función para reproducir una frase de ejemplo con la voz seleccionada
     function reproducirEjemploVoz() {
@@ -269,7 +362,11 @@
     // Cargar las voces disponibles
     function cargarVoces() {
       voices = window.speechSynthesis.getVoices();
-      
+      actualizarOpcionesVoces();
+    }
+
+    // Actualizar las opciones de voz basadas en el filtro de género
+    function actualizarOpcionesVoces() {
       // Limpiar el select de voces
       voiceSelect.innerHTML = '';
       
@@ -278,22 +375,54 @@
         return;
       }
       
-      // Filtrar y agregar voces al select
-      voices.forEach((voice, index) => {
+      const generoSeleccionado = genderSelect.value;
+      const vocesFiltradas = filtrarVocesPorGenero(generoSeleccionado);
+      
+      if (vocesFiltradas.length === 0) {
+        voiceSelect.innerHTML = '<option value="">No hay voces disponibles para este género</option>';
+        return;
+      }
+      
+      // Cargar preferencias guardadas
+      const preferencias = cargarPreferenciasVoz();
+      let vozPreferida = null;
+      
+      // Agregar voces filtradas al select
+      vocesFiltradas.forEach((voice, filteredIndex) => {
+        const originalIndex = voices.indexOf(voice);
         const option = document.createElement('option');
-        option.value = index;
-        option.textContent = `${voice.name} (${voice.lang})`;
+        option.value = originalIndex;
+        
+        const genero = clasificarGeneroVoz(voice.name);
+        const etiquetaGenero = genero === 'female' ? ' ♀' : genero === 'male' ? ' ♂' : '';
+        option.textContent = `${voice.name}${etiquetaGenero} (${voice.lang})`;
+        
         voiceSelect.appendChild(option);
         
-        // Seleccionar una voz en español por defecto
-        if (voice.lang.startsWith('es') && !voiceSelect.value) {
-          option.selected = true;
+        // Verificar si esta es la voz preferida guardada
+        if (preferencias && (
+          (preferencias.vozIndex == originalIndex) ||
+          (preferencias.vozNombre === voice.name)
+        )) {
+          vozPreferida = originalIndex;
+        }
+        
+        // Seleccionar una voz en español por defecto si no hay preferencia
+        if (!vozPreferida && voice.lang.startsWith('es')) {
+          vozPreferida = originalIndex;
         }
       });
       
-      // Si no hay voz en español, seleccionar la primera
-      if (!voiceSelect.value && voices.length > 0) {
-        voiceSelect.value = 0;
+      // Seleccionar la voz preferida o la primera disponible
+      if (vozPreferida !== null) {
+        voiceSelect.value = vozPreferida;
+      } else if (vocesFiltradas.length > 0) {
+        voiceSelect.value = voices.indexOf(vocesFiltradas[0]);
+      }
+      
+      // Guardar las preferencias actuales
+      if (voiceSelect.value) {
+        guardarPreferenciasVoz();
       }
     }
 
@@ -313,7 +442,20 @@
     }, 1000);
 
     // Event listener para cambio de voz - reproducir ejemplo
-    voiceSelect.addEventListener('change', reproducirEjemploVoz);
+    voiceSelect.addEventListener('change', () => {
+      reproducirEjemploVoz();
+      guardarPreferenciasVoz();
+    });
+
+    // Event listener para cambio de género - actualizar lista de voces
+    genderSelect.addEventListener('change', () => {
+      actualizarOpcionesVoces();
+    });
+
+    // Event listener para cambio de velocidad - guardar preferencia
+    speedSelect.addEventListener('change', () => {
+      guardarPreferenciasVoz();
+    });
 
     // Funciones para manejar localStorage
     function guardarTexto() {
@@ -384,7 +526,21 @@
     }
 
     // Cargar textos guardados al iniciar la aplicación
-    document.addEventListener('DOMContentLoaded', mostrarTextosGuardados);
+    document.addEventListener('DOMContentLoaded', () => {
+      mostrarTextosGuardados();
+      
+      // Cargar preferencias de voz si ya están disponibles
+      const preferencias = cargarPreferenciasVoz();
+      if (preferencias) {
+        // Aplicar preferencias de género y velocidad inmediatamente
+        if (preferencias.genero) {
+          genderSelect.value = preferencias.genero;
+        }
+        if (preferencias.velocidad) {
+          speedSelect.value = preferencias.velocidad;
+        }
+      }
+    });
   </script>
 </body>
 </html>
