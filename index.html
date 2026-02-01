@@ -183,6 +183,13 @@
     let currentSpeech = null;
     let isPaused = false;
 
+    // Función para limpiar marcas temporales del texto
+    function cleanTimestamps(text) {
+      // Eliminar timestamps con formato (m:ss) o (mm:ss)
+      // Ejemplos: (0:00), (1:23), (12:34)
+      return text.replace(/\(\d+:\d{2}\)/g, '');
+    }
+
     // Función para clasificar el género de la voz basado en el nombre
     function clasificarGeneroVoz(voiceName) {
       const nombreLower = voiceName.toLowerCase();
@@ -294,7 +301,10 @@
       // Detener cualquier síntesis en curso
       window.speechSynthesis.cancel();
 
-      const speech = new SpeechSynthesisUtterance(texto);
+      // Limpiar marcas temporales del texto antes de leer
+      const textoLimpio = cleanTimestamps(texto);
+
+      const speech = new SpeechSynthesisUtterance(textoLimpio);
       speech.lang = 'es-ES'; // Idioma español
       speech.rate = parseFloat(speedSelect.value); // Velocidad seleccionada
       speech.pitch = 1; // Tono normal
