@@ -187,7 +187,7 @@
     function cleanTimestamps(text) {
       // Eliminar timestamps con formato (m:ss) o (mm:ss)
       // Ejemplos: (0:00), (1:23), (12:34)
-      return text.replace(/\(\d+:\d{2}\)/g, '');
+      return text.replace(/\(\d+:\d{2}\)/g, '').replace(/\s+/g, ' ').trim();
     }
 
     // Función para clasificar el género de la voz basado en el nombre
